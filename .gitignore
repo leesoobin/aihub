@@ -1,3 +1,26 @@
-.env
-.venv/*
-/src/aihub/aihub.db
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.env/
+*.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and debug files
+*.log
+*.out
+*.err
+
+# Cache files
+.cache/
+*.egg-info/
+.eggs/
+
+# IDE-specific files
+.vscode/
+.idea/
