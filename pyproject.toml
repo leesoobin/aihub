@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "aihub"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "aihub", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.13,<4.0"
+fastapi = ">=0.110.0"
+uvicorn = ">=0.27.1"
+okta-jwt-verifier = "^0.2.7"
+python-jose = {extras = ["cryptography"], version = "^3.4.0"}
+load-dotenv = "^0.1.0"
+sqlalchemy = "^2.0.40"
+extra-streamlit-components = "^0.1.71"
+pydantic-settings = "^2.8.1"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
