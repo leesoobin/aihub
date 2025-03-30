@@ -26,6 +26,8 @@ def init_session_state():
         st.session_state.selected_model = "GPT-4"
     if "selected_agents" not in st.session_state:
         st.session_state.selected_agents = ["일반 대화"]
+    if "selected_rag" not in st.session_state:
+        st.session_state.selected_rag = "NONE"
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
     if "user_info" not in st.session_state:
@@ -147,6 +149,7 @@ def record_user_access(user_info):
             "access_token": st.session_state.access_token,
             "refresh_token": st.session_state.refresh_token
         }
+        print(user_data)
         
         # API 경로 수정
         response = requests.post(
@@ -201,14 +204,21 @@ def sidebar():
         )
         st.session_state.selected_model = selected_model
         
+        # RAG 선택
+        rag_options = ["NONE", "ElasticSearch", "Opensearch", "Chroma", "Qdrant"]
+        selected_rag = st.selectbox(
+            "RAG 선택",
+            rag_options,
+            index=rag_options.index(st.session_state.selected_rag)
+        )
+        st.session_state.selected_rag = selected_rag
+        
         # 에이전트 다중 선택
         st.subheader("에이전트 선택")
         agents = {
-            "일반 대화": "🗣️ 일반적인 대화를 수행합니다",
-            "코드 리뷰": "💻 코드 분석 및 리뷰를 수행합니다",
-            "번역가": "🌐 다국어 번역을 수행합니다",
-            "작문 도우미": "📝 글쓰기를 도와줍니다",
-            "데이터 분석가": "📊 데이터 분석을 수행합니다"
+            "아지트": "🗣️ 아지트 연동하여 일반적인 대화를 수행합니다",
+            "위키": "💻 위키를 연동하여 일반적인 대화를 수행합니다.",
+            "HIONE": "🌐 정보보호포탈을 연동하여 실시간 응답을 수행합니다.",
         }
         
         selected_agents = []
@@ -231,6 +241,7 @@ def sidebar():
         st.divider()
         st.caption("현재 설정")
         st.write(f"🤖 모델: {selected_model}")
+        st.write(f"📚 RAG: {selected_rag}")
         st.write("🎯 활성화된 에이전트:")
         for agent in selected_agents:
             st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• {agent}")  # HTML 공백 문자로 들여쓰기
@@ -261,10 +272,44 @@ def chat_interface():
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            agents_str = ", ".join(st.session_state.selected_agents)
-            response = f"[{st.session_state.selected_model} / {agents_str}] 다음 메시지를 받았습니다: {prompt}"
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            message_placeholder = st.empty()
+            full_response = ""
+            
+            # API 요청 데이터 준비
+            request_data = {
+                "messages": [{"role": "user", "content": prompt}],
+                "model": st.session_state.selected_model,
+                "agents": st.session_state.selected_agents,
+                "rag": st.session_state.selected_rag
+            }
+            
+            # SSE 요청
+            response = requests.post(
+                f"{API_BASE_URL}/api/v1/chat/stream",
+                json=request_data,
+                stream=True
+            )
+            
+            if response.status_code == 200:
+                for line in response.iter_lines():
+                    if line:
+                        line = line.decode('utf-8')
+                        if line.startswith('data: '):
+                            data = line[6:]
+                            if data == '[DONE]':
+                                break
+                            try:
+                                chunk = json.loads(data)
+                                full_response += chunk['content']
+                                message_placeholder.markdown(full_response)
+                            except json.JSONDecodeError:
+                                continue
+                
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+            else:
+                error_message = f"API 오류: {response.status_code}"
+                st.error(error_message)
+                st.session_state.messages.append({"role": "assistant", "content": error_message})
 
 def main():
     init_session_state()

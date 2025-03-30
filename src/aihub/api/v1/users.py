@@ -4,9 +4,15 @@ from aihub.schemas.user import User, UserCreate
 from aihub.models.user import UserModel
 from aihub.core.database import get_db
 from datetime import datetime, timedelta
+from typing import List
 
-router = APIRouter(prefix="/api/v1/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"])
 
+@router.get("/", response_model=List[User])
+async def get_all_users(db: Session = Depends(get_db)):
+    """모든 사용자 정보를 조회합니다."""
+    users = db.query(UserModel).all()
+    return users
 
 @router.post("/okta/{okta_id}", response_model=User)
 async def record_access(
@@ -27,8 +33,18 @@ async def record_access(
             db.commit()
             return existing_user
         else:
-            # 토큰 만료, 새로운 세션 필요
-            raise HTTPException(status_code=401, detail="Token expired")
+            # 새로운 토큰 정보가 있는지 확인
+            if user_info.access_token and user_info.refresh_token:
+                # 토큰 정보 업데이트
+                existing_user.access_token = user_info.access_token
+                existing_user.refresh_token = user_info.refresh_token
+                existing_user.access_date = datetime.utcnow()
+                db.commit()
+                return existing_user
+            else:
+                # 토큰 만료, 새로운 세션 필요
+                print("토큰 만료, 새로운 세션 필요")
+                raise HTTPException(status_code=401, detail="Token expired")
 
     # 새로운 사용자 생성
     db_user = UserModel(

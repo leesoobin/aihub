@@ -13,9 +13,9 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# API 라우터 등록 (prefix 제거)
-app.include_router(users.router)
-app.include_router(chat.router)
+# API 라우터 등록
+app.include_router(users.router, prefix="/api/v1")
+app.include_router(chat.router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
